@@ -30,4 +30,8 @@ public class UserService {
     public UserTokenDto authenticate(UserLoginDto userLoginDto){
         return keycloakClient.Signin(userLoginDto);
     }
+
+    public void changePassword(String userName, String password){
+        keycloakClient.changePassword(userName, password);
+    }
 }

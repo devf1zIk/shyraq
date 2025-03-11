@@ -18,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
-
 import java.util.List;
 import java.util.Map;
 
@@ -102,6 +101,33 @@ public class KeycloakClient {
         userTokenDto.setToken((String) responseBody.get("access_token"));
         userTokenDto.setRefreshToken((String) responseBody.get("refresh_token"));
         return userTokenDto;
+
+    }
+
+    public void changePassword(String username, String newPassword){
+        List<UserRepresentation> users =
+                keycloak.realm(realm)
+                        .users()
+                        .search(username);
+
+        if(users.isEmpty()){
+            log.error("User not found with username: {}", username);
+            throw new RuntimeException("User not found with username:" + username);
+        }
+
+        UserRepresentation userRepresentation = users.get(0);
+
+        CredentialRepresentation credentials = new CredentialRepresentation();
+        credentials.setType(CredentialRepresentation.PASSWORD);
+        credentials.setValue(newPassword);
+        credentials.setTemporary(false);
+
+        keycloak.realm(realm)
+                .users()
+                .get(userRepresentation.getId())
+                .resetPassword(credentials);
+
+        log.info("Password changes successfully!");
 
     }
 }

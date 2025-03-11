@@ -1,15 +1,11 @@
 package kz.f1zIk.shyraq.api;
-import kz.f1zIk.shyraq.dto.UserCreateDto;
-import kz.f1zIk.shyraq.dto.UserLoginDto;
-import kz.f1zIk.shyraq.dto.UserTokenDto;
+import kz.f1zIk.shyraq.converter.UserUtils;
+import kz.f1zIk.shyraq.dto.*;
 import kz.f1zIk.shyraq.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping(value = "/api/v1/user")
@@ -26,5 +22,34 @@ public class UserController {
     @PostMapping(value = "/login")
     public UserTokenDto login(@RequestBody UserLoginDto user) {
         return userService.authenticate(user);
+    }
+
+    @GetMapping(value = "/current-user-name")
+    public String getCurrentUserName() {
+        return UserUtils.getCurrentUserName();
+    }
+
+    @GetMapping(value = "/current-user")
+    public UserDto getCurrentUser() {
+        return UserUtils.getCurrentUser();
+    }
+
+    @PostMapping(value = "/change-password")
+    public ResponseEntity<String> changePassword(@RequestBody UserChangePasswordDto userChangePasswordDTO) {
+
+        String userName = UserUtils.getCurrentUserName();
+        if (userName == null){
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Couldn't find user");
+        }
+
+        try{
+
+            userService.changePassword(userName, userChangePasswordDTO.getNewPassword());
+            return ResponseEntity.ok("Password changed successfully!");
+
+        }catch (RuntimeException e){
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error on changing password");
+        }
+
     }
 }
