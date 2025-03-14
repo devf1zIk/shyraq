@@ -1,44 +1,80 @@
 package unitWise.unitWise_backend.entity;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.Date;
 
 @Entity
 @Data
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "payments")
-
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String accrualDate;
-    private String transactionDate;
+    @JsonProperty("date_accrual")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date dateAccrual;
 
-    @Column(name = "business_unit_id")
-    private Long businessUnitId;
-    private String businessUnitName;
+    @JsonProperty("date_transfer")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private Date dateTransfer;
 
-    @Column(name = "article_id")
-    private Long articleId;
-    private String articleName;
+    @JsonProperty("company_id")
+    private Long companyId;
 
-    @Column(name = "contract_id")
+    @JsonProperty("account_id")
+    private Long accountId;
+
+    @JsonProperty("contract_id")
     private Long contractId;
-    private String contractName;
 
-    @Column(name = "bank_account_id")
-    private Long bankAccountId;
-    private String bankAccountName;
+    @JsonProperty("amountdt")
+    private Double amountDt;
 
-    private String debitAmount;
-    private String creditAmount;
+    @JsonProperty("amountkt")
+    private Double amountKt;
 
-    @Column(name = "type_payment_id")
-    private Long typePaymentId;
-    private String typePaymentName;
+    @JsonProperty("cf_item_id")
+    private Long articleId;
+
+    @JsonProperty("version_id")
+    private Long versionId;
+
+    @JsonProperty("user_id")
+    private Long userId;
+
+    @JsonProperty("project_id")
+    private Long projectId;
 
     private String comment;
+
+    @JsonProperty("created_at")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "Asia/Aqtobe")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date createdAt;
+
+    @JsonProperty("updated_at")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "Asia/Aqtobe")
+    @Temporal(TemporalType.TIMESTAMP)
+    private Date updatedAt;
+
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = new Date();
+        updatedAt = new Date();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = new Date();
+    }
 }
