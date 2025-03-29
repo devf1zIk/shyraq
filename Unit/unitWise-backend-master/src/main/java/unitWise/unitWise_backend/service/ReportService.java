@@ -1,10 +1,7 @@
 package unitWise.unitWise_backend.service;
-
 import org.springframework.stereotype.Service;
-import unitWise.unitWise_backend.dto.cashFlow.CashFlowByProjectResponseDto;
-import unitWise.unitWise_backend.entity.Article;
+import unitWise.unitWise_backend.dto.report.CashFlowByProjectResponseDto;
 import unitWise.unitWise_backend.entity.Payment;
-
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.HashMap;

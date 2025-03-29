@@ -11,6 +11,7 @@ import unitWise.unitWise_backend.dto.cashFlow.PaymentResponseDto;
 import unitWise.unitWise_backend.entity.Payment;
 import unitWise.unitWise_backend.repository.PaymentRepository;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -18,7 +19,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.sql.Date;
 import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +32,8 @@ public class PaymentService {
     private static final String UPLOAD_DIR = "uploads/";
     private final PaymentRepository paymentRepository;
     private final ContractService contractService;
+    private static final List<Payment> payments = new ArrayList<>();
+
 
     public PaymentService(PaymentRepository paymentRepository,
                           ContractService contractService) {
@@ -36,7 +41,43 @@ public class PaymentService {
         this.contractService = contractService;
     }
 
-    public void processFile(MultipartFile file, Long projectId, Long userId) throws IOException {
+    public byte[] saveToExcel(List<Payment> payments) throws IOException {
+        try (Workbook workbook = new XSSFWorkbook();
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("Payments");
+
+            // Создание заголовков
+            String[] headers = {"Дата начисления", "Дата перечисления", "ID компании", "ID аккаунта", "ID договора", "Сумма Дт", "Сумма Кт", "ID статьи", "ID версии", "ID пользователя", "ID проекта", "Комментарий"};
+            Row headerRow = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                Cell cell = headerRow.createCell(i);
+                cell.setCellValue(headers[i]);
+            }
+
+            // Заполнение данных
+            int rowIndex = 1;
+            for (Payment payment : payments) {
+                Row row = sheet.createRow(rowIndex++);
+                row.createCell(0).setCellValue(payment.getDateAccrual() != null ? payment.getDateAccrual().toString() : "");
+                row.createCell(1).setCellValue(payment.getDateTransfer() != null ? payment.getDateTransfer().toString() : "");
+                row.createCell(2).setCellValue(payment.getCompanyId() != null ? payment.getCompanyId().toString() : "");
+                row.createCell(3).setCellValue(payment.getAccountId() != null ? payment.getAccountId().toString() : "");
+                row.createCell(4).setCellValue(payment.getContractId() != null ? payment.getContractId().toString() : "");
+                row.createCell(5).setCellValue(payment.getAmountDt());
+                row.createCell(6).setCellValue(payment.getAmountKt());
+                row.createCell(7).setCellValue(payment.getArticleId() != null ? payment.getArticleId().toString() : "");
+                row.createCell(8).setCellValue(payment.getVersionId() != null ? payment.getVersionId().toString() : "");
+                row.createCell(9).setCellValue(payment.getUserId() != null ? payment.getUserId().toString() : "");
+                row.createCell(10).setCellValue(payment.getProjectId() != null ? payment.getProjectId().toString() : "");
+                row.createCell(11).setCellValue(payment.getComment() != null ? payment.getComment() : "");
+            }
+
+            workbook.write(out);
+            return out.toByteArray();
+        }
+    }
+
+    public List<Payment> processFile(MultipartFile file, Long projectId, Long userId) throws IOException {
         if (file.isEmpty()) {
             throw new IOException("Файл пуст!");
         }
@@ -51,15 +92,14 @@ public class PaymentService {
 
         Files.copy(file.getInputStream(), savePath, StandardCopyOption.REPLACE_EXISTING);
 
-        List<Payment> payments;
         if (file.getOriginalFilename().toLowerCase().endsWith(".pdf")) {
-            payments = parsePdf(savePath.toString(), projectId, userId);
+            return parsePdf(savePath.toString(), projectId, userId);
         } else if (file.getOriginalFilename().toLowerCase().endsWith(".xlsx") || file.getOriginalFilename().toLowerCase().endsWith(".xls")) {
-            payments = parseExcel(savePath.toString(), projectId, userId);
+            return parseExcel(savePath.toString(), projectId, userId);
         } else {
             throw new IOException("Неподдерживаемый формат файла: " + file.getOriginalFilename());
         }
-        paymentRepository.saveAll(payments);
+
     }
 
     public static List<Payment> parsePdf(String filePath, Long projectId, Long userId) throws IOException {
@@ -78,9 +118,11 @@ public class PaymentService {
             for (String line : lines) {
                 if (line.matches("\\d{2}\\.\\d{2}\\.\\d{4}.*")) {
                     String[] parts = line.split("\\s+", 4);
+                    System.out.println("Line" + line);
                     Payment payment = new Payment();
-                    payment.setDateAccrual(java.sql.Date.valueOf(LocalDate.parse(parts[0], java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
-                    payment.setDateTransfer(java.sql.Date.valueOf(LocalDate.parse(parts[0], java.time.format.DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
+                    payment.setId(Long.parseLong(parts[0]));
+                    payment.setDateAccrual(Date.valueOf(LocalDate.parse(parts[0], DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
+                    payment.setDateTransfer(Date.valueOf(LocalDate.parse(parts[0], DateTimeFormatter.ofPattern("dd.MM.yyyy"))));
                     payment.setCompanyId(Long.parseLong(parts[1]));
                     payment.setAccountId(Long.parseLong(parts[1]));
                     payment.setAmountDt(Double.parseDouble(parts[2].replace(",", ".")));
@@ -90,7 +132,6 @@ public class PaymentService {
                     payment.setVersionId(Long.parseLong(parts[4]));
                     payment.setUserId(userId);
                     payment.setProjectId(projectId);
-                    payments.add(payment);
                 }
             }
         }
@@ -98,7 +139,6 @@ public class PaymentService {
     }
 
     public static List<Payment> parseExcel(String filePath, Long projectId, Long userId) throws IOException {
-        List<Payment> payments = new ArrayList<>();
         File fileToParse = new File(filePath);
 
         if (!fileToParse.exists()) {
@@ -110,10 +150,10 @@ public class PaymentService {
 
             Sheet sheet = workbook.getSheetAt(0);
             for (Row row : sheet) {
-                if (row.getRowNum() == 0) continue; // Пропускаем заголовок
+                if (row.getRowNum() == 0) continue;
                 Payment payment = new Payment();
-                payment.setDateAccrual(java.sql.Date.valueOf(getCellDateValue(row.getCell(0))));
-                payment.setDateTransfer(java.sql.Date.valueOf(getCellDateValue(row.getCell(1))));
+                payment.setDateAccrual(getCellDateValue(row.getCell(0)));
+                payment.setDateTransfer(getCellDateValue(row.getCell(1)));
                 payment.setCompanyId(getCellLongValue(row.getCell(2)));
                 payment.setAccountId(getCellLongValue(row.getCell(3)));
                 payment.setContractId(getCellLongValue(row.getCell(4)));
@@ -124,6 +164,8 @@ public class PaymentService {
                 payment.setUserId(userId);
                 payment.setProjectId(projectId);
                 payment.setComment(getCellStringValue(row.getCell(8)));
+                payment.setCreatedAt(getCellDateValue(row.getCell(10)));
+                payment.setUpdatedAt(getCellDateValue(row.getCell(11)));
                 payments.add(payment);
             }
         }
@@ -164,17 +206,24 @@ public class PaymentService {
         return null;
     }
 
-    private static LocalDate getCellDateValue(Cell cell) {
+    private static Date getCellDateValue(Cell cell) {
         if (cell == null) return null;
-        if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
-            return cell.getLocalDateTimeCellValue().toLocalDate();
-        } else {
-            try {
-                return LocalDate.parse(cell.getStringCellValue().trim());
-            } catch (Exception e) {
-                return null;
+
+        try {
+            if (cell.getCellType() == CellType.NUMERIC && DateUtil.isCellDateFormatted(cell)) {
+                return Date.valueOf(cell.getLocalDateTimeCellValue().toLocalDate());
             }
+            if (cell.getCellType() == CellType.STRING) {
+                String dateStr = cell.getStringCellValue().trim();
+                if (!dateStr.isEmpty()) {
+                    return Date.valueOf(LocalDate.parse(dateStr));
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("Ошибка парсинга даты в ячейке: " + cell);
         }
+
+        return null;
     }
 
     public Payment createCashFlow(PaymentRequestDto paymentRequestDto) {
@@ -227,5 +276,9 @@ public class PaymentService {
         for (Long id : paymentIds) {
             paymentRepository.deleteById(id);
         }
+    }
+
+    public Payment savePayment(Payment payment) {
+        return paymentRepository.save(payment);
     }
 }

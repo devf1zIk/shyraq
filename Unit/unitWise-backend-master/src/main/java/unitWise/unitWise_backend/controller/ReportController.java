@@ -2,7 +2,7 @@ package unitWise.unitWise_backend.controller;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import unitWise.unitWise_backend.dto.cashFlow.CashFlowByProjectResponseDto;
+import unitWise.unitWise_backend.dto.report.CashFlowByProjectResponseDto;
 import unitWise.unitWise_backend.service.PaymentService;
 import unitWise.unitWise_backend.service.ReportService;
 
