@@ -4,30 +4,28 @@ import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.springframework.cglib.core.Local;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Date;
 
 @Entity
+@Builder
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-public class Payment {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+public class Payment extends BaseEntity{
 
     @JsonProperty("date_accrual")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date dateAccrual;
+    private LocalDate dateAccrual;
 
     @JsonProperty("date_transfer")
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    private Date dateTransfer;
+    private LocalDate dateTransfer;
 
     @JsonProperty("company_id")
     private Long companyId;
@@ -39,10 +37,10 @@ public class Payment {
     private Long contractId;
 
     @JsonProperty("amountdt")
-    private Double amountDt;
+    private BigDecimal amountDt;
 
     @JsonProperty("amountkt")
-    private Double amountKt;
+    private BigDecimal amountKt;
 
     @JsonProperty("cf_item_id")
     private Long articleId;
@@ -58,25 +56,5 @@ public class Payment {
 
     private String comment;
 
-    @JsonProperty("created_at")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "Asia/Aqtobe")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date createdAt;
-
-    @JsonProperty("updated_at")
-    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'", timezone = "Asia/Aqtobe")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date updatedAt;
-
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = new Date();
-        updatedAt = new Date();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = new Date();
-    }
+    private Long siblingId;
 }
